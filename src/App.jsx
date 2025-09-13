@@ -1,7 +1,8 @@
 import { useState, useEffect, process } from "react";
 import "./App.css";
 
-const apiKey = import.meta.env.VITE_SNFC_API_KEY;
+// const apiKey = import.meta.env.VITE_SNFC_API_KEY;
+const apiKey = "55659429-0fc0-41ab-926f-d48d2e7472d3";
 const hagondange = "stop_area:SNCF:87191114";
 const metz = "stop_area:SNCF:87192039";
 
