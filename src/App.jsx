@@ -1,35 +1,115 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState, useEffect, process } from "react";
+import "./App.css";
 
-function App() {
-  const [count, setCount] = useState(0)
+const apiKey = import.meta.env.VITE_SNFC_API_KEY;
+const hagondange = "stop_area:SNCF:87191114";
+const metz = "stop_area:SNCF:87192039";
 
+function formatDate(date = new Date()) {
+  const pad = (n) => (n < 10 ? "0" + n : n);
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    date.getFullYear() +
+    pad(date.getMonth() + 1) +
+    pad(date.getDate()) +
+    "T" +
+    pad(date.getHours()) +
+    pad(date.getMinutes()) +
+    pad(date.getSeconds())
+  );
 }
 
-export default App
+function App() {
+  const [trains, setTrains] = useState([]);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function getTrains() {
+      const now = formatDate();
+      const url = `https://api.sncf.com/v1/coverage/sncf/journeys?from=${encodeURIComponent(
+        hagondange
+      )}&to=${encodeURIComponent(metz)}&datetime=20250913T133000&count=10`;
+
+      try {
+        const response = await fetch(url, {
+          headers: {
+            Authorization: "Basic " + btoa(apiKey + ":"),
+          },
+        });
+
+        if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+        const data = await response.json();
+
+        if (!data.journeys || !Array.isArray(data.journeys))
+          throw new Error("Aucun trajet trouvé");
+
+        const journeys = data.journeys.map((journey) => {
+          const dep = journey.departure_date_time;
+          const arr = journey.arrival_date_time;
+          const depTime = dep.substr(9, 2) + ":" + dep.substr(11, 2);
+          const arrTime = arr.substr(9, 2) + ":" + arr.substr(11, 2);
+          const durationMin = journey.duration
+            ? Math.floor(journey.duration / 60)
+            : 0;
+
+          // Trouver les disruptions qui concernent ce train
+          const relatedDisruptions =
+            (data.disruptions || []).filter((d) =>
+              d.application_periods.some(
+                (p) =>
+                  dep >= p.begin && dep <= p.end // le départ est dans la période
+              )
+            ).map((d) => ({
+              id: d.id,
+              status: d.status,
+              severity: d.severity?.name,
+              message: d.messages?.find((m) => m.text)?.text || "Pas de message",
+              updatedAt: d.updated_at,
+              update_format_time: d.updated_at.substr(9, 2) + ":" + d.updated_at.substr(11, 2)
+            }));
+
+          return { depTime, arrTime, durationMin, disruptions: relatedDisruptions };
+        });
+
+        setTrains(journeys);
+      } catch (err) {
+        setError(err.message);
+      }
+    }
+
+    getTrains();
+  }, []);
+
+  return (
+    <div>
+      <header>
+        <h1>🚆 Prochains trains Hagondange → Metz</h1>
+      </header>
+
+      {error && <p style={{ color: "red" }}>Erreur : {error}</p>}
+
+      <ul>
+        {trains.map((t, i) => (
+          <li key={i}>
+            {i + 1}. Départ: {t.depTime} → Arrivée: {t.arrTime} ({t.durationMin} min)
+            {t.disruptions.length > 0 && (
+              <ul>
+                {t.disruptions.map((d) => (
+                  <li key={d.id}>
+                    <strong>{d.severity}</strong> – {d.status}
+                    <br />
+                    📝 {d.message}
+                    <br />
+                    ⏱️ Mis à jour : {d.update_format_time}
+                    
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default App;
