@@ -28,7 +28,7 @@ function App() {
       const now = formatDate();
       const url = `https://api.sncf.com/v1/coverage/sncf/journeys?from=${encodeURIComponent(
         hagondange
-      )}&to=${encodeURIComponent(metz)}&datetime=20250913T133000&count=10`;
+      )}&to=${encodeURIComponent(metz)}&datetime=20250915T135000&count=1`;
 
       try {
         const response = await fetch(url, {
