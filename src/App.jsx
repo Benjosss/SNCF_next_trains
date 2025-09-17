@@ -28,7 +28,7 @@ function App() {
       const now = formatDate();
       const url = `https://api.sncf.com/v1/coverage/sncf/journeys?from=${encodeURIComponent(
         hagondange
-      )}&to=${encodeURIComponent(metz)}&datetime=20250915T135000&count=1`;
+      )}&to=${encodeURIComponent(metz)}&datetime=${now}&count=1`;
 
       try {
         const response = await fetch(url, {
@@ -82,33 +82,51 @@ function App() {
 
   return (
     <div>
-      <header>
-        <h1>🚆 Prochains trains Hagondange → Metz</h1>
-      </header>
+      <div className="head">
+        <header>
+          <h1>🚆 Prochains trains Hagondange → Metz</h1>
+        </header>
+      </div>
+      
 
       {error && <p style={{ color: "red" }}>Erreur : {error}</p>}
 
-      <ul>
+      <div className="container">
         {trains.map((t, i) => (
-          <li key={i}>
-            {i + 1}. Départ: {t.depTime} → Arrivée: {t.arrTime} ({t.durationMin} min)
-            {t.disruptions.length > 0 && (
-              <ul>
-                {t.disruptions.map((d) => (
-                  <li key={d.id}>
-                    <strong>{d.severity}</strong> – {d.status}
-                    <br />
-                    📝 {d.message}
-                    <br />
-                    ⏱️ Mis à jour : {d.update_format_time}
-                    
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
+          <div className="notification" key={i}>
+            <div className="notiglow"></div>
+            <div className="notiborderglow"></div>
+
+            <div className="notititle">
+              🚆 Départ : {t.depTime} → Arrivée : {t.arrTime}
+            </div>
+
+            <div className="notibody">
+              <div className="time"><strong>⇌ {t.durationMin} min</strong></div>
+              {t.disruptions.length > 0 && (
+                <div className="disruptions">
+                  <h4>Perturbations :</h4>
+                  <ul>
+                    {t.disruptions.map((d) => (
+                      <li key={d.id}>
+                        <strong>{d.severity}</strong> – {d.status}
+                        <br />
+                        📝 {d.message}
+                        <br />
+                        <span className="update">
+                          ⏱️ Mis à jour : {d.update_format_time}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
         ))}
-      </ul>
+      </div>
+
+      
     </div>
   );
 }
