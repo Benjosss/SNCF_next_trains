@@ -16,7 +16,20 @@ header{
   border-radius: 1rem;
 }
 
+.reverse {
+  background-color: #7300ff;
+  border: solid white 1px;
+  border-radius: 1rem;
+  font-size: large;
+  color: white;
+  width: 3rem;
+  height: 3rem;
+}
 
+.reverse:hover {
+  background-color: #a64dff;
+  cursor: pointer;
+} 
 
 .container{
   display: flex;
@@ -69,7 +82,7 @@ header{
   padding: 0.65rem 0.25rem 0.4rem 1.25rem;
   margin-bottom: 1rem;
   font-weight: 500;
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   transition: transform 300ms ease;
   z-index: 5;
 }
@@ -83,12 +96,17 @@ header{
   padding: 0 1.25rem;
   transition: transform 300ms ease;
   z-index: 5;
+  
 }
 
 .notibody h4 {
   margin: 0.5rem 0 0.25rem 0;
   font-size: 1.1rem;
   color: var(--color);
+}
+
+.disruptions h4{
+  margin-bottom: 1rem;
 }
 
 .time{
@@ -99,9 +117,19 @@ header{
   padding: 0.5rem;
 }
 
-.notification:hover .notibody {
-  transform: translateX(0.25rem)
+.time_bottom{
+  position: absolute;
+  justify-content: flex-end;
+  bottom: 10px;
+  right: 10px;
 }
+
+.update{
+  font-size: 0.8rem;
+  color: gray;
+  text-align: right;
+}
+
 
 .notiglow,
 .notiborderglow {

@@ -23,6 +23,25 @@ function App() {
   const [trains, setTrains] = useState([]);
   const [error, setError] = useState(null);
 
+  const status_label = {
+    active: "En cours",
+    past: "Passé"
+  }
+
+  const severity_label = {
+    "trip delayed": "Retardé",
+    "trip cancelled": "Annulé"
+  }
+
+  const refreshBtn = document.getElementById("refresh_btn");
+
+  function handleClick() {
+    window.location.reload();
+  }
+
+  refreshBtn?.addEventListener("click", handleClick);
+
+
   useEffect(() => {
     async function getTrains() {
       const now = formatDate();
@@ -85,6 +104,7 @@ function App() {
       <div className="head">
         <header>
           <h1>🚆 Prochains trains Hagondange → Metz</h1>
+          <button id="refresh_btn" className="reverse" type="button">⟳</button>
         </header>
       </div>
       
@@ -102,25 +122,28 @@ function App() {
             </div>
 
             <div className="notibody">
-              <div className="time"><strong>⇌ {t.durationMin} min</strong></div>
+              <div className="time_bottom">
+                <div className="time"><strong>⇌ {t.durationMin} min</strong></div>
+              </div>
               {t.disruptions.length > 0 && (
                 <div className="disruptions">
                   <h4>Perturbations :</h4>
-                  <ul>
                     {t.disruptions.map((d) => (
-                      <li key={d.id}>
-                        <strong>{d.severity}</strong> – {d.status}
+                      <span key={d.id}>
+                        ❓ {severity_label[d.severity] || d.severity}
                         <br />
                         📝 {d.message}
                         <br />
                         <span className="update">
-                          ⏱️ Mis à jour : {d.update_format_time}
+                          ⏱️ Mis à jour : {d.update_format_time} • {status_label[d.status]}
                         </span>
-                      </li>
+                      </span>
                     ))}
-                  </ul>
                 </div>
               )}
+              <div className="time_bottom">
+                <div className="time"><strong>⇌ {t.durationMin} min</strong></div>
+              </div>
             </div>
           </div>
         ))}
