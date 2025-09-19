@@ -27,11 +27,29 @@ function App() {
   const status_label = {
     active: "En cours",
     past: "Passé",
+    future: "Futur"
   };
 
   const severity_label = {
     "trip delayed": "Retardé",
-    "trip cancelled": "Annulé",
+    "trip canceled": "Annulé",
+  };
+
+  // Fonction pour convertir le temps HHMMSS en minutes
+  const timeToMinutes = (timeStr) => {
+    if (!timeStr || timeStr.length < 6) return 0;
+    const hours = parseInt(timeStr.substr(0, 2));
+    const minutes = parseInt(timeStr.substr(2, 2));
+    const seconds = parseInt(timeStr.substr(4, 2));
+    return hours * 60 + minutes + seconds / 60;
+  };
+
+  // Fonction pour calculer le retard en minutes
+  const calculateDelay = (baseTime, amendedTime) => {
+    if (!baseTime || !amendedTime) return 0;
+    const baseMinutes = timeToMinutes(baseTime);
+    const amendedMinutes = timeToMinutes(amendedTime);
+    return Math.round(amendedMinutes - baseMinutes);
   };
 
   // Fonction d'appel API
@@ -39,7 +57,8 @@ function App() {
     try {
       setLoading(true);
       setError(null);
-      const now = formatDate();
+      // const now = formatDate();
+      const now = "20250919T120000";
       const from = direction ? hagondange : metz;
       const to = direction ? metz : hagondange;
 
@@ -68,6 +87,9 @@ function App() {
           ? Math.floor(journey.duration / 60)
           : 0;
 
+        // Déterminer la destination recherchée selon la direction
+        const targetDestination = dest ? "Metz" : "Hagondange";
+
         // Filtrer les disruptions liées
         const relatedDisruptions = (data.disruptions || [])
           .filter((d) =>
@@ -75,17 +97,63 @@ function App() {
               (p) => dep >= p.begin && dep <= p.end // départ dans la période
             )
           )
-          .map((d) => ({
-            id: d.id,
-            status: d.status,
-            severity: d.severity?.name,
-            message: d.messages?.find((m) => m.text)?.text || "Pas de message",
-            updatedAt: d.updated_at,
-            update_format_time:
-              d.updated_at.substr(9, 2) + ":" + d.updated_at.substr(11, 2),
-          }));
+          .map((d) => {
+            let delayMinutes = 0;
+            let arrivalDelay = 0;
 
-        return { depTime, arrTime, durationMin, disruptions: relatedDisruptions };
+            // Chercher le point d'arrivée correspondant dans les impacted_stops
+            if (d.impacted_objects && d.impacted_objects.length > 0) {
+              d.impacted_objects.forEach((impactedObj) => {
+                if (impactedObj.impacted_stops) {
+                  impactedObj.impacted_stops.forEach((stop) => {
+                    const stopName = stop.stop_point?.name || "";
+                    
+                    // Vérifier si c'est notre destination
+                    if (stopName.includes(targetDestination)) {
+                      // Calculer le retard à l'arrivée
+                      const baseArrival = stop.base_arrival_time;
+                      const amendedArrival = stop.amended_arrival_time;
+                      
+                      if (baseArrival && amendedArrival) {
+                        arrivalDelay = calculateDelay(baseArrival, amendedArrival);
+                      }
+
+                      // Calculer le retard au départ si disponible
+                      const baseDeparture = stop.base_departure_time;
+                      const amendedDeparture = stop.amended_departure_time;
+                      
+                      if (baseDeparture && amendedDeparture) {
+                        const departureDelay = calculateDelay(baseDeparture, amendedDeparture);
+                        // Prendre le retard le plus important
+                        delayMinutes = Math.max(arrivalDelay, departureDelay);
+                      } else {
+                        delayMinutes = arrivalDelay;
+                      }
+                    }
+                  });
+                }
+              });
+            }
+
+            return {
+              id: d.id,
+              status: d.status,
+              severity: d.severity?.name,
+              message: d.messages?.find((m) => m.text)?.text || "Pas de message",
+              updatedAt: d.updated_at,
+              update_format_time:
+                d.updated_at.substr(9, 2) + ":" + d.updated_at.substr(11, 2),
+              delayMinutes: delayMinutes, // Retard en minutes
+              destination: targetDestination
+            };
+          });
+
+        return { 
+          depTime, 
+          arrTime, 
+          durationMin, 
+          disruptions: relatedDisruptions 
+        };
       });
 
       setTrains(journeys);
@@ -114,11 +182,11 @@ function App() {
           <span className="buttons">
             <button
               id="refresh_btn"
-              className="reverse"
+              className="refresh"
               type="button"
               onClick={() => {getTrains(dest);}}
             >
-              <strong>⟳</strong>
+              <strong>🔄</strong>
             </button>
             <button
               id="change_btn"
@@ -126,7 +194,7 @@ function App() {
               type="button"
               onClick={() => setDest((prev) => !prev)}
             >
-              <strong>⇆</strong>
+              <strong>🔀</strong>
             </button>
           </span>
         </header>
@@ -156,16 +224,28 @@ function App() {
                   <h4>Perturbations :</h4>
                   {t.disruptions.map((d) => (
                     <span key={d.id}>
-                      ❓ {severity_label[d.severity] || d.severity}
+                      ⁉️ {severity_label[d.severity] || d.severity}
                       <br />
-                      📝 {d.message}
+                      💬 {d.message}
                       <br />
                       <span className="update">
                         ⏱️ Mis à jour : {d.update_format_time} •{" "}
                         {status_label[d.status]}
                       </span>
+                      {d.delayMinutes > 0 && (
+                        <div className="delay_bottom">
+                        <div className="time">
+                          <strong>⌚ {d.delayMinutes} min</strong>
+                        </div>
+                      </div>
+                      )}
                     </span>
                   ))}
+                </div>
+              )}
+              {t.disruptions.length <= 0 &&(
+                <div className="disruptions">
+                  <h3 className="no_disruptions">Aucune perturbation, bon voyage !</h3>
                 </div>
               )}
             </div>
