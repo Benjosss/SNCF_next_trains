@@ -35,7 +35,7 @@ function App() {
     "trip canceled": "Annulé",
   };
 
-  // Fonction pour convertir le temps HHMMSS en minutes
+  // Convertir HHMMSS en minutes
   const timeToMinutes = (timeStr) => {
     if (!timeStr || timeStr.length < 6) return 0;
     const hours = parseInt(timeStr.substr(0, 2));
@@ -44,7 +44,7 @@ function App() {
     return hours * 60 + minutes + seconds / 60;
   };
 
-  // Fonction pour calculer le retard en minutes
+  // Calculer le retard en minutes
   const calculateDelay = (baseTime, amendedTime) => {
     if (!baseTime || !amendedTime) return 0;
     const baseMinutes = timeToMinutes(baseTime);
@@ -52,13 +52,13 @@ function App() {
     return Math.round(amendedMinutes - baseMinutes);
   };
 
-  // Fonction d'appel API
+  // Appel API
   async function getTrains(direction) {
     try {
       setLoading(true);
       setError(null);
-      // const now = formatDate();
-      const now = "20250919T120000";
+      const now = formatDate();
+      // const now = "20250919T120000";
       const from = direction ? hagondange : metz;
       const to = direction ? metz : hagondange;
 
@@ -87,28 +87,27 @@ function App() {
           ? Math.floor(journey.duration / 60)
           : 0;
 
-        // Déterminer la destination recherchée selon la direction
+        // Déterminer la destination
         const targetDestination = dest ? "Metz" : "Hagondange";
 
-        // Filtrer les disruptions liées
+        // Filtrer les perturbations
         const relatedDisruptions = (data.disruptions || [])
           .filter((d) =>
             d.application_periods.some(
-              (p) => dep >= p.begin && dep <= p.end // départ dans la période
+              (p) => dep >= p.begin && dep <= p.end // Départ dans la période
             )
           )
           .map((d) => {
             let delayMinutes = 0;
             let arrivalDelay = 0;
 
-            // Chercher le point d'arrivée correspondant dans les impacted_stops
+            // Chercher le point d'arrivée correspondant à la destination
             if (d.impacted_objects && d.impacted_objects.length > 0) {
               d.impacted_objects.forEach((impactedObj) => {
                 if (impactedObj.impacted_stops) {
                   impactedObj.impacted_stops.forEach((stop) => {
                     const stopName = stop.stop_point?.name || "";
                     
-                    // Vérifier si c'est notre destination
                     if (stopName.includes(targetDestination)) {
                       // Calculer le retard à l'arrivée
                       const baseArrival = stop.base_arrival_time;
@@ -118,13 +117,13 @@ function App() {
                         arrivalDelay = calculateDelay(baseArrival, amendedArrival);
                       }
 
-                      // Calculer le retard au départ si disponible
+                      // Calculer le retard au départ
                       const baseDeparture = stop.base_departure_time;
                       const amendedDeparture = stop.amended_departure_time;
                       
                       if (baseDeparture && amendedDeparture) {
                         const departureDelay = calculateDelay(baseDeparture, amendedDeparture);
-                        // Prendre le retard le plus important
+                        // Prendre le retard le plus important entre le retard au départ et le retard à l'arrivée
                         delayMinutes = Math.max(arrivalDelay, departureDelay);
                       } else {
                         delayMinutes = arrivalDelay;
@@ -143,7 +142,7 @@ function App() {
               updatedAt: d.updated_at,
               update_format_time:
                 d.updated_at.substr(9, 2) + ":" + d.updated_at.substr(11, 2),
-              delayMinutes: delayMinutes, // Retard en minutes
+              delayMinutes: delayMinutes,
               destination: targetDestination
             };
           });
