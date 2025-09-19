@@ -1,7 +1,6 @@
-import { useState, useEffect, process } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 
-// const apiKey = import.meta.env.VITE_SNFC_API_KEY;
 const apiKey = "55659429-0fc0-41ab-926f-d48d2e7472d3";
 const hagondange = "stop_area:SNCF:87191114";
 const metz = "stop_area:SNCF:87192039";
@@ -22,93 +21,118 @@ function formatDate(date = new Date()) {
 function App() {
   const [trains, setTrains] = useState([]);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [dest, setDest] = useState(true); // true = Hagondange → Metz, false = Metz → Hagondange
 
   const status_label = {
     active: "En cours",
-    past: "Passé"
-  }
+    past: "Passé",
+  };
 
   const severity_label = {
     "trip delayed": "Retardé",
-    "trip cancelled": "Annulé"
+    "trip cancelled": "Annulé",
+  };
+
+  // Fonction d'appel API
+  async function getTrains(direction) {
+    try {
+      setLoading(true);
+      setError(null);
+      const now = formatDate();
+      const from = direction ? hagondange : metz;
+      const to = direction ? metz : hagondange;
+
+      const url = `https://api.sncf.com/v1/coverage/sncf/journeys?from=${encodeURIComponent(
+        from
+      )}&to=${encodeURIComponent(to)}&datetime=${now}&count=1`;
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: "Basic " + btoa(apiKey + ":"),
+        },
+      });
+
+      if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+      const data = await response.json();
+
+      if (!data.journeys || !Array.isArray(data.journeys))
+        throw new Error("Aucun trajet trouvé");
+
+      const journeys = data.journeys.map((journey) => {
+        const dep = journey.departure_date_time;
+        const arr = journey.arrival_date_time;
+        const depTime = dep.substr(9, 2) + ":" + dep.substr(11, 2);
+        const arrTime = arr.substr(9, 2) + ":" + arr.substr(11, 2);
+        const durationMin = journey.duration
+          ? Math.floor(journey.duration / 60)
+          : 0;
+
+        // Filtrer les disruptions liées
+        const relatedDisruptions = (data.disruptions || [])
+          .filter((d) =>
+            d.application_periods.some(
+              (p) => dep >= p.begin && dep <= p.end // départ dans la période
+            )
+          )
+          .map((d) => ({
+            id: d.id,
+            status: d.status,
+            severity: d.severity?.name,
+            message: d.messages?.find((m) => m.text)?.text || "Pas de message",
+            updatedAt: d.updated_at,
+            update_format_time:
+              d.updated_at.substr(9, 2) + ":" + d.updated_at.substr(11, 2),
+          }));
+
+        return { depTime, arrTime, durationMin, disruptions: relatedDisruptions };
+      });
+
+      setTrains(journeys);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+      setTrains([]);
+    } finally{
+      setLoading(false);
+    }
   }
-
-  const refreshBtn = document.getElementById("refresh_btn");
-
-  function handleClick() {
-    window.location.reload();
-  }
-
-  refreshBtn?.addEventListener("click", handleClick);
-
 
   useEffect(() => {
-    async function getTrains() {
-      const now = formatDate();
-      const url = `https://api.sncf.com/v1/coverage/sncf/journeys?from=${encodeURIComponent(
-        hagondange
-      )}&to=${encodeURIComponent(metz)}&datetime=${now}&count=1`;
-
-      try {
-        const response = await fetch(url, {
-          headers: {
-            Authorization: "Basic " + btoa(apiKey + ":"),
-          },
-        });
-
-        if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
-        const data = await response.json();
-
-        if (!data.journeys || !Array.isArray(data.journeys))
-          throw new Error("Aucun trajet trouvé");
-
-        const journeys = data.journeys.map((journey) => {
-          const dep = journey.departure_date_time;
-          const arr = journey.arrival_date_time;
-          const depTime = dep.substr(9, 2) + ":" + dep.substr(11, 2);
-          const arrTime = arr.substr(9, 2) + ":" + arr.substr(11, 2);
-          const durationMin = journey.duration
-            ? Math.floor(journey.duration / 60)
-            : 0;
-
-          // Trouver les disruptions qui concernent ce train
-          const relatedDisruptions =
-            (data.disruptions || []).filter((d) =>
-              d.application_periods.some(
-                (p) =>
-                  dep >= p.begin && dep <= p.end // le départ est dans la période
-              )
-            ).map((d) => ({
-              id: d.id,
-              status: d.status,
-              severity: d.severity?.name,
-              message: d.messages?.find((m) => m.text)?.text || "Pas de message",
-              updatedAt: d.updated_at,
-              update_format_time: d.updated_at.substr(9, 2) + ":" + d.updated_at.substr(11, 2)
-            }));
-
-          return { depTime, arrTime, durationMin, disruptions: relatedDisruptions };
-        });
-
-        setTrains(journeys);
-      } catch (err) {
-        setError(err.message);
-      }
-    }
-
-    getTrains();
-  }, []);
+    getTrains(dest);
+  }, [dest]);
 
   return (
     <div>
       <div className="head">
         <header>
-          <h1>🚆 Prochains trains Hagondange → Metz</h1>
-          <button id="refresh_btn" className="reverse" type="button">⟳</button>
+          <h1 id="main_title">
+            {dest
+              ? "🚆 Prochains trains Hagondange → Metz"
+              : "🚆 Prochains trains Metz → Hagondange"}
+          </h1>
+          <span className="buttons">
+            <button
+              id="refresh_btn"
+              className="reverse"
+              type="button"
+              onClick={() => {getTrains(dest);}}
+            >
+              <strong>⟳</strong>
+            </button>
+            <button
+              id="change_btn"
+              className="change"
+              type="button"
+              onClick={() => setDest((prev) => !prev)}
+            >
+              <strong>⇆</strong>
+            </button>
+          </span>
         </header>
       </div>
-      
 
+      {loading && <p>⏳ Chargement des trains...</p>}
       {error && <p style={{ color: "red" }}>Erreur : {error}</p>}
 
       <div className="container">
@@ -123,33 +147,31 @@ function App() {
 
             <div className="notibody">
               <div className="time_bottom">
-                <div className="time"><strong>⇌ {t.durationMin} min</strong></div>
+                <div className="time">
+                  <strong>⇌ {t.durationMin} min</strong>
+                </div>
               </div>
               {t.disruptions.length > 0 && (
                 <div className="disruptions">
                   <h4>Perturbations :</h4>
-                    {t.disruptions.map((d) => (
-                      <span key={d.id}>
-                        ❓ {severity_label[d.severity] || d.severity}
-                        <br />
-                        📝 {d.message}
-                        <br />
-                        <span className="update">
-                          ⏱️ Mis à jour : {d.update_format_time} • {status_label[d.status]}
-                        </span>
+                  {t.disruptions.map((d) => (
+                    <span key={d.id}>
+                      ❓ {severity_label[d.severity] || d.severity}
+                      <br />
+                      📝 {d.message}
+                      <br />
+                      <span className="update">
+                        ⏱️ Mis à jour : {d.update_format_time} •{" "}
+                        {status_label[d.status]}
                       </span>
-                    ))}
+                    </span>
+                  ))}
                 </div>
               )}
-              <div className="time_bottom">
-                <div className="time"><strong>⇌ {t.durationMin} min</strong></div>
-              </div>
             </div>
           </div>
         ))}
       </div>
-
-      
     </div>
   );
 }

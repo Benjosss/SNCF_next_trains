@@ -16,20 +16,34 @@ header{
   border-radius: 1rem;
 }
 
-.reverse {
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reverse, .change {
   background-color: #7300ff;
   border: solid white 1px;
   border-radius: 1rem;
-  font-size: large;
+  font-size: 20px;
   color: white;
   width: 3rem;
   height: 3rem;
+  text-align: center;
+  line-height: 3rem;
+  margin: 5px;
 }
 
 .reverse:hover {
   background-color: #a64dff;
   cursor: pointer;
 } 
+
+.change:hover{
+  background-color: #a64dff;
+  cursor: pointer;
+}
 
 .container{
   display: flex;

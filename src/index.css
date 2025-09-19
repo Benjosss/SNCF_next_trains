@@ -8,3 +8,9 @@
 
   background-color: #6a6a74;
 }
+
+footer {
+  margin: 10px;
+  position: absolute;
+  bottom: 0;
+}
