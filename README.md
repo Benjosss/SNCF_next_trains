@@ -14,5 +14,5 @@ A simple website giving the next SNCF train between two trains stations.
 - SNCF API calls
 - GitHub pages
 
-## Test it yoursel :
+## Test it yourself :
 Look a the GitHub pages website under Deployments' category.
