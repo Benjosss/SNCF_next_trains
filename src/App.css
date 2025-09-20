@@ -138,11 +138,22 @@ header{
   margin-left: 10px;
 }
 
+.stops_bottom .stop_count{
+  background-color: rgb(43, 43, 43);
+  border-radius: 1rem;
+  width: fit-content;
+  padding: 0.5rem;
+  display: inline;
+  margin-right: 10px;
+}
 
-.time_bottom, .delay_bottom{
+.time_bottom, .delay_bottom, .stops_bottom{
   position: absolute;
   justify-content: flex-end;
   bottom: 15px;
+}
+
+.time_bottom{
   right: 10px;
 }
 

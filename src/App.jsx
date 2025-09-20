@@ -87,6 +87,20 @@ function App() {
           ? Math.floor(journey.duration / 60)
           : 0;
 
+        // Compter les arrêts intermédiaires
+        let stopCount = 0;
+        if (journey.sections && Array.isArray(journey.sections)) {
+          journey.sections.forEach((section) => {
+            if (section.stop_date_times && Array.isArray(section.stop_date_times)) {
+              // Soustrait 2 pour exclure les gares de départ et d'arrivée
+              const sectionStops = section.stop_date_times.length - 2;
+              if (sectionStops > 0) {
+                stopCount += sectionStops;
+              }
+            }
+          });
+        }
+
         // Déterminer la destination
         const targetDestination = dest ? "Metz" : "Hagondange";
 
@@ -151,6 +165,7 @@ function App() {
           depTime, 
           arrTime, 
           durationMin, 
+          stopCount,
           disruptions: relatedDisruptions 
         };
       });
@@ -216,6 +231,11 @@ function App() {
               <div className="time_bottom">
                 <div className="time">
                   <strong>⇌ {t.durationMin} min</strong>
+                </div>
+              </div>
+              <div className="stops_bottom">
+                <div className="stop_count">
+                  <strong>📍{t.stopCount}</strong>
                 </div>
               </div>
               {t.disruptions.length > 0 && (
