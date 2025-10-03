@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import "./App.css";
 
 const apiKey = "55659429-0fc0-41ab-926f-d48d2e7472d3";
-const hagondange = "stop_area:SNCF:87191114";
-const metz = "stop_area:SNCF:87192039";
+const hagondange = "87191114";
+const metz = "87192039";
 
 function formatDate(date = new Date()) {
-  const pad = (n) => (n < 10 ? "0" + n : n);
+  const pad = (n) => String(n).padStart(2, "0");
   return (
     date.getFullYear() +
     pad(date.getMonth() + 1) +
@@ -58,17 +58,18 @@ function App() {
       setLoading(true);
       setError(null);
       const now = formatDate();
-      // const now = "20250919T120000";
+      //const now = "20251003T120000";
       const from = direction ? hagondange : metz;
       const to = direction ? metz : hagondange;
 
-      const url = `https://api.sncf.com/v1/coverage/sncf/journeys?from=${encodeURIComponent(
+      const url = `https://corsproxy.io/?url=https://api.sncf.com/v1/coverage/sncf/journeys?from=stop_area:SNCF:${
         from
-      )}&to=${encodeURIComponent(to)}&datetime=${now}&count=1`;
+      }&to=stop_area:SNCF:${to}&datetime=${now}&count=1`;
 
       const response = await fetch(url, {
         headers: {
           Authorization: "Basic " + btoa(apiKey + ":"),
+          'X-Requested-With': 'XMLHttpRequest'
         },
       });
 
